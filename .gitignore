@@ -5,3 +5,7 @@ __pycache__/
 data/*.jsonl
 data/*.joblib
 runs/
+.cache/
+models/
+evals/cache/
+colab_results/

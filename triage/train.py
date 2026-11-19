@@ -26,6 +26,7 @@ class TrainConfig:
     target_modules: tuple[str, ...] = ("q_proj", "k_proj", "v_proj", "o_proj")
     epochs: float = 2.0
     batch_size: int = 16
+    micro_batch_size: int = 0  # 0 = same as batch_size; smaller splits each step to save memory
     learning_rate: float = 5e-4
     warmup_steps: int = 30
     max_length: int = 160
@@ -81,7 +82,7 @@ def evaluate_loss(model, encoded: list[dict], pad_id: int, batch_size: int) -> f
     model.eval()
     total, tokens = 0.0, 0
     for start in range(0, len(encoded), batch_size):
-        batch = collate(encoded[start : start + batch_size], pad_id)
+        batch = {k: v.to(model.device) for k, v in collate(encoded[start : start + batch_size], pad_id).items()}
         n = int((batch["labels"] != -100).sum())
         total += model(**batch).loss.item() * n
         tokens += n
@@ -122,7 +123,7 @@ def train(
 
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_at)
     history: list[dict] = [
-        {"step": 0, "val_loss": round(evaluate_loss(model, enc_val, pad_id, cfg.batch_size), 4)}
+        {"step": 0, "val_loss": round(evaluate_loss(model, enc_val, pad_id, cfg.micro_batch_size or cfg.batch_size), 4)}
     ]
     log(f"trainable parameters: {trainable:,} of {total:,} ({100 * trainable / total:.2f}%)")
     log(f"steps: {total_steps}, validation loss before training: {history[0]['val_loss']}")
@@ -135,20 +136,26 @@ def train(
             order = list(range(len(enc_train)))
             rng.shuffle(order)
         picked, order = order[: cfg.batch_size], order[cfg.batch_size :]
-        batch = collate([enc_train[i] for i in picked], pad_id)
-        loss = model(**batch).loss
-        loss.backward()
+        # Gradient accumulation: the same step, computed in smaller pieces when memory is short.
+        micro = cfg.micro_batch_size or cfg.batch_size
+        chunks = [picked[i : i + micro] for i in range(0, len(picked), micro)]
+        step_loss = 0.0
+        for chunk in chunks:
+            batch = {k: v.to(model.device) for k, v in collate([enc_train[i] for i in chunk], pad_id).items()}
+            loss = model(**batch).loss / len(chunks)
+            loss.backward()
+            step_loss += loss.item()
         torch.nn.utils.clip_grad_norm_((p for p in model.parameters() if p.requires_grad), 1.0)
         optimizer.step()
         scheduler.step()
         optimizer.zero_grad()
-        running.append(loss.item())
+        running.append(step_loss)
         step += 1
         if step % cfg.eval_every == 0 or step == total_steps:
             entry = {
                 "step": step,
                 "train_loss": round(sum(running) / len(running), 4),
-                "val_loss": round(evaluate_loss(model, enc_val, pad_id, cfg.batch_size), 4),
+                "val_loss": round(evaluate_loss(model, enc_val, pad_id, cfg.micro_batch_size or cfg.batch_size), 4),
                 "minutes": round((time.time() - started) / 60, 1),
             }
             running = []
@@ -168,6 +175,8 @@ def train(
         "trainable_pct": round(100 * trainable / total, 2),
         "training_minutes": round((time.time() - started) / 60, 1),
         "cpu_threads": torch.get_num_threads(),
+        "device": str(model.device),
+        "base_model": getattr(model, "name_or_path", ""),
         "history": history,
     }
     (out_dir / "training_log.json").write_text(json.dumps(summary, indent=2) + "\n")

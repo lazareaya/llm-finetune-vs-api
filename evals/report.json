@@ -53,7 +53,7 @@
         "count": 1
       }
     ],
-    "ms_per_message_batched": 0.18,
+    "ms_per_message_batched": 0.02,
     "samples": [
       {
         "message": "Hi, first time here. How do I sign up so I can save my basket for later?",
@@ -136,7 +136,7 @@
         "count": 1
       }
     ],
-    "ms_per_message_batched": 0.13,
+    "ms_per_message_batched": 0.03,
     "samples": [
       {
         "message": "Hi, first time here. How do I sign up so I can save my basket for later?",
@@ -219,7 +219,8 @@
         "count": 1
       }
     ],
-    "ms_per_message_batched": 214.1,
+    "ms_per_message_batched": 144.74,
+    "device": "cpu",
     "samples": [
       {
         "message": "Hi, first time here. How do I sign up so I can save my basket for later?",
@@ -302,7 +303,7 @@
         "count": 1
       }
     ],
-    "ms_per_message_batched": 0.03,
+    "ms_per_message_batched": 0.01,
     "samples": [
       {
         "message": "I would like to ask for compensations",
@@ -385,7 +386,7 @@
         "count": 21
       }
     ],
-    "ms_per_message_batched": 0.03,
+    "ms_per_message_batched": 0.01,
     "samples": [
       {
         "message": "I would like to ask for compensations",
@@ -468,7 +469,8 @@
         "count": 1
       }
     ],
-    "ms_per_message_batched": 187.75,
+    "ms_per_message_batched": 129.77,
+    "device": "cpu",
     "samples": [
       {
         "message": "I would like to ask for compensations",
@@ -551,7 +553,8 @@
         "count": 2
       }
     ],
-    "ms_per_message_batched": 915.27,
+    "ms_per_message_batched": 488.85,
+    "device": "cpu",
     "samples": [
       {
         "message": "Hi, first time here. How do I sign up so I can save my basket for later?",
@@ -634,7 +637,8 @@
         "count": 1
       }
     ],
-    "ms_per_message_batched": 1690.11,
+    "ms_per_message_batched": 855.8,
+    "device": "cpu",
     "samples": [
       {
         "message": "Hi, first time here. How do I sign up so I can save my basket for later?",
@@ -717,7 +721,8 @@
         "count": 5
       }
     ],
-    "ms_per_message_batched": 907.21,
+    "ms_per_message_batched": 479.93,
+    "device": "cpu",
     "samples": [
       {
         "message": "I would like to ask for compensations",
@@ -800,7 +805,8 @@
         "count": 1
       }
     ],
-    "ms_per_message_batched": 1661.28,
+    "ms_per_message_batched": 865.01,
+    "device": "cpu",
     "samples": [
       {
         "message": "I would like to ask for compensations",
@@ -841,5 +847,84 @@
       "median_ms": 1253,
       "p95_ms": 1596
     }
+  },
+  "qwen3-0.6b-prompt/challenge": {
+    "n": 8,
+    "valid_record_pct": 100.0,
+    "intent_accuracy_pct": 0.0,
+    "category_accuracy_pct": 37.5,
+    "order_number_accuracy_pct": 50.0,
+    "order_number_found_pct": null,
+    "order_number_invented_pct": 50.0,
+    "exact_record_pct": 0.0,
+    "sent_to_review_pct": 50.0,
+    "accepted_exact_pct": 0.0,
+    "n_with_order_number": 0,
+    "top_confusions": [
+      {
+        "expected": "recover_password",
+        "got": "contact_customer_service",
+        "count": 2
+      },
+      {
+        "expected": "create_account",
+        "got": "contact_customer_service",
+        "count": 1
+      },
+      {
+        "expected": "create_account",
+        "got": "registration_problems",
+        "count": 1
+      },
+      {
+        "expected": "delete_account",
+        "got": "contact_customer_service",
+        "count": 1
+      },
+      {
+        "expected": "delete_account",
+        "got": "switch_account",
+        "count": 1
+      },
+      {
+        "expected": "edit_account",
+        "got": "contact_customer_service",
+        "count": 1
+      },
+      {
+        "expected": "edit_account",
+        "got": "recover_password",
+        "count": 1
+      }
+    ],
+    "ms_per_message_batched": 1996.96,
+    "device": "mps",
+    "samples": [
+      {
+        "message": "Hi, first time here. How do I sign up so I can save my basket for later?",
+        "expected": "{\"category\": \"ACCOUNT\", \"intent\": \"create_account\", \"order_number\": null}",
+        "output": "{\"category\": \"CONTACT\", \"intent\": \"contact_customer_service\", \"order_number\": \"none\"}"
+      },
+      {
+        "message": "my colleague said I need a profile before I can buy anything, where do I make one",
+        "expected": "{\"category\": \"ACCOUNT\", \"intent\": \"create_account\", \"order_number\": null}",
+        "output": "{\"category\": \"ACCOUNT\", \"intent\": \"registration_problems\"}"
+      },
+      {
+        "message": "Please erase my profile and everything attached to it, I am not going to shop here again.",
+        "expected": "{\"category\": \"ACCOUNT\", \"intent\": \"delete_account\", \"order_number\": null}",
+        "output": "{\"category\": \"CONTACT\", \"intent\": \"contact_customer_service\"}"
+      },
+      {
+        "message": "how can i close my account for good? dont need it anymore",
+        "expected": "{\"category\": \"ACCOUNT\", \"intent\": \"delete_account\", \"order_number\": null}",
+        "output": "{\"category\": \"ACCOUNT\", \"intent\": \"switch_account\", \"order_number\": \"none\"}"
+      },
+      {
+        "message": "I moved to a new job and my email changed, where do I update the details on my profile?",
+        "expected": "{\"category\": \"ACCOUNT\", \"intent\": \"edit_account\", \"order_number\": null}",
+        "output": "{\"category\": \"CONTACT\", \"intent\": \"contact_customer_service\"}"
+      }
+    ]
   }
 }
