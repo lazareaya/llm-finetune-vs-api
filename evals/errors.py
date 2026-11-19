@@ -74,12 +74,12 @@ def build() -> str:
         out += lines + [""]
     # A few concrete failures of the main systems on the hand-written set.
     _, examples = analyse("challenge")
-    for system in ("qwen3-0.6b-lora", "hosted", "lora"):
+    for system in ("qwen3-0.6b-lora", "hosted"):
         if system in examples:
             label = next(lbl for s, lbl, _ in ROWS if s == system).replace("**", "")
             out.append(f"Examples of errors, {label}, hand-written set:")
             out.append("")
-            for ex in examples[system][:4]:
+            for ex in examples[system][:3]:
                 msg = ex["message"].replace("|", "/")
                 got = re.sub(r"\s+", " ", ex["output"])[:120].replace("|", "/")
                 out.append(f"- *{msg}* → expected `{ex['expected']}`, got `{got}` ({ex['bucket']})")

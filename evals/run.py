@@ -115,6 +115,7 @@ def run(systems: list[str], set_name: str, limit: int) -> dict:
         if system == "hosted":
             result["input_tokens"], result["output_tokens"] = provider.input_tokens, provider.output_tokens
             result["reasoning_effort"] = provider.reasoning_effort or None
+            result["messages_per_request"] = provider.batch_size
         if system not in ("hosted", "classic", "mock") and not system.startswith("ollama"):
             from triage.model import pick_device
 

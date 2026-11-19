@@ -90,3 +90,26 @@ def test_tables_are_written_between_markers(tmp_path):
     readme.write_text(f"intro\n{final_table.START}\nold\n{final_table.END}\nend\n")
     assert final_table.write_into(readme, "NEW TABLE")
     assert readme.read_text() == f"intro\n{final_table.START}\nNEW TABLE\n{final_table.END}\nend\n"
+
+
+def test_hosted_batched_mode_splits_records_and_tokens(tmp_path):
+    reply = json.dumps({"records": [
+        {"id": 1, "category": "ORDER", "intent": "cancel_order", "order_number": "ORD-12345"},
+        {"id": 2, "category": "REFUND", "intent": "track_refund", "order_number": None},
+    ]})
+    client = FakeClient(reply, prompt_tokens=400, total_tokens=600)
+    provider = OpenAIProvider("gemini-x", client=client, batch_size=20, cache_path=tmp_path / "c.jsonl")
+    out = provider.complete(["cancel ORD-12345", "where is my refund", "cancel ORD-12345"])
+    assert client.calls == 1
+    assert json.loads(out[0])["order_number"] == "ORD-12345" and out[2] == out[0]
+    assert json.loads(out[1])["intent"] == "track_refund"
+    assert "[2] where is my refund" in client.kwargs["messages"][1]["content"]
+    assert provider.input_tokens == 600  # 400 split over 2 unique messages, 3 answers
+
+
+def test_judge_groups_several_messages_in_one_call():
+    reply = json.dumps({"items": {"1": {"grades": {"A": 5, "B": 1}}, "2": {"grades": {"A": 3, "B": 4}}}})
+    client = FakeClient(reply)
+    rows = judge.ask_judge_group(client, "m", [("m1", RECORD, {"A": "x", "B": "y"}), ("m2", RECORD, {"A": "x", "B": "y"})], "low")
+    assert [r["grades"] for r in rows] == [{"A": 5, "B": 1}, {"A": 3, "B": 4}] and client.calls == 1
+    assert "=== Item 2 ===" in client.kwargs["messages"][1]["content"]

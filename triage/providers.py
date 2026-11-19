@@ -16,7 +16,7 @@ from typing import Protocol
 from .baseline import regex_order_number
 from .config import Settings
 from .labels import INTENT_TO_CATEGORY
-from .prompts import chat_messages, ft_prompt
+from .prompts import SYSTEM_PROMPT, chat_messages, ft_prompt
 from .schema import target_json
 
 
@@ -107,6 +107,13 @@ class LocalProvider:
         return generate(self.model, self.tokenizer, prompts, self.max_new_tokens, self.batch_size)
 
 
+BATCH_SUFFIX = (
+    "\n\nYou will receive several numbered messages. Route each one independently. Answer with one "
+    'JSON object and nothing else: {"records": [{"id": 1, "category": "...", "intent": "...", '
+    '"order_number": ...}, ...]} with exactly one record per message number.'
+)
+
+
 class OpenAIProvider:
     """A hosted model with the same instructions, for a cost and accuracy comparison.
 
@@ -124,6 +131,7 @@ class OpenAIProvider:
         reasoning_effort: str | None = None,
         cache_path: Path | None = None,
         retries: int = 10,
+        batch_size: int | None = None,
     ):
         if client is None:
             from openai import OpenAI
@@ -135,6 +143,7 @@ class OpenAIProvider:
         self.max_tokens = max_tokens or int(os.getenv("OPENAI_MAX_TOKENS", "60"))
         self.reasoning_effort = reasoning_effort or os.getenv("OPENAI_REASONING_EFFORT", "")
         self.cache_path, self.retries = cache_path, retries
+        self.batch_size = batch_size or int(os.getenv("OPENAI_BATCH_SIZE", "1"))
         self.input_tokens = self.output_tokens = 0
         self.latencies_ms: list[float] = []
         self.rate_limited = 0
@@ -145,11 +154,11 @@ class OpenAIProvider:
                 row = json.loads(line)
                 self._cache[row["key"]] = row
 
-    def _call(self, message: str):
+    def _call(self, message: str, turns: list[dict] | None = None, max_tokens: int | None = None):
         kwargs = dict(
             model=self.model,
-            messages=chat_messages(message),
-            max_tokens=self.max_tokens,
+            messages=turns or chat_messages(message),
+            max_tokens=max_tokens or self.max_tokens,
             temperature=0,
             response_format={"type": "json_object"},
         )
@@ -171,10 +180,66 @@ class OpenAIProvider:
                     raise
                 time.sleep(min(60, 5 * 2**attempt))
 
+    def _complete_batched(self, messages: list[str]) -> None:
+        """Several messages in one request (free tiers allow only a few requests per day).
+
+        Each message is still routed on its own: the model gets the same instructions plus a
+        numbered list and must return one record per number. Tokens are split evenly between
+        the messages of a request; per-request cost is measured separately with single calls.
+        """
+        todo = [m for m in dict.fromkeys(messages) if self._key(m, True) not in self._cache]
+        for start in range(0, len(todo), self.batch_size):
+            chunk = todo[start : start + self.batch_size]
+            listing = "\n\n".join(f"[{i + 1}] {m.strip()}" for i, m in enumerate(chunk))
+            turns = [
+                {"role": "system", "content": SYSTEM_PROMPT + BATCH_SUFFIX},
+                {"role": "user", "content": listing},
+            ]
+            response = self._call("", turns, max_tokens=max(self.max_tokens, 400 * len(chunk)))
+            text = response.choices[0].message.content or ""
+            records: dict[int, dict] = {}
+            match = re.search(r"\{.*\}", text, flags=re.DOTALL)
+            try:
+                for rec in json.loads(match.group(0)).get("records", []) if match else []:
+                    records[int(rec.get("id"))] = rec
+            except (json.JSONDecodeError, TypeError, ValueError):
+                pass
+            usage = getattr(response, "usage", None)
+            prompt_t = (getattr(usage, "prompt_tokens", 0) or 0) if usage else 0
+            total_t = (getattr(usage, "total_tokens", 0) or 0) if usage else 0
+            for i, message in enumerate(chunk):
+                rec = records.get(i + 1)
+                out = json.dumps({k: rec.get(k) for k in ("category", "intent", "order_number")}) if rec else ""
+                row = {
+                    "key": self._key(message, True), "text": out, "batched": len(chunk),
+                    "input_tokens": prompt_t / len(chunk), "output_tokens": (total_t - prompt_t) / len(chunk),
+                    "ms": round(self._last_ms / len(chunk), 1),
+                }
+                self._store(row)
+
+    def _key(self, message: str, batched: bool = False) -> str:
+        return f"{self.model}|{self.reasoning_effort}|{'batch|' if batched else ''}{message}"
+
+    def _store(self, row: dict) -> None:
+        self._cache[row["key"]] = row
+        if self.cache_path:
+            Path(self.cache_path).parent.mkdir(parents=True, exist_ok=True)
+            with Path(self.cache_path).open("a") as fh:
+                fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+
     def complete(self, messages: list[str]) -> list[str]:
+        if self.batch_size > 1:
+            self._complete_batched(messages)
+            out = []
+            for message in messages:
+                row = self._cache[self._key(message, True)]
+                self.input_tokens += row["input_tokens"]
+                self.output_tokens += row["output_tokens"]
+                out.append(row["text"])
+            return out
         out = []
         for message in messages:
-            key = f"{self.model}|{self.reasoning_effort}|{message}"
+            key = self._key(message)
             row = self._cache.get(key)
             if row is None:
                 response = self._call(message)
@@ -192,11 +257,7 @@ class OpenAIProvider:
                     "output_tokens": output_t,
                     "ms": round(ms, 1),
                 }
-                self._cache[key] = row
-                if self.cache_path:
-                    Path(self.cache_path).parent.mkdir(parents=True, exist_ok=True)
-                    with Path(self.cache_path).open("a") as fh:
-                        fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+                self._store(row)
             self.input_tokens += row["input_tokens"]
             self.output_tokens += row["output_tokens"]
             self.latencies_ms.append(row["ms"])
@@ -218,6 +279,9 @@ class OllamaProvider:
         self.model, self.max_new_tokens = model, max_new_tokens
         self.http = httpx.Client(base_url=url, timeout=120)
         self.latencies_ms: list[float] = []
+        # OLLAMA_NUM_GPU=0 forces the CPU only (no Apple GPU), to measure a GPU-free machine.
+        gpu = os.getenv("OLLAMA_NUM_GPU", "")
+        self.extra_options = {"num_gpu": int(gpu)} if gpu else {}
 
     def complete(self, messages: list[str]) -> list[str]:
         out = []
@@ -231,7 +295,7 @@ class OllamaProvider:
                     "raw": True,
                     "stream": False,
                     "keep_alive": "30m",
-                    "options": {"temperature": 0, "num_predict": self.max_new_tokens},
+                    "options": {"temperature": 0, "num_predict": self.max_new_tokens, **self.extra_options},
                 },
             )
             response.raise_for_status()

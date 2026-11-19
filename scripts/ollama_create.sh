@@ -21,7 +21,7 @@ EOF
 # A 16-bit GGUF (local export) is quantised to 4 bits by Ollama; a q4_k_m GGUF (Colab) is used as is.
 QUANT=()
 if ! echo "$GGUF" | grep -qi 'q4_k_m'; then QUANT=(--quantize q4_K_M); fi
-(cd "models/$SYSTEM" && ollama create "$NAME" "${QUANT[@]}" -f Modelfile)
+(cd "models/$SYSTEM" && ollama create "$NAME" ${QUANT[@]+"${QUANT[@]}"} -f Modelfile)
 ollama list | grep "$NAME"
 echo "next: OLLAMA_MODEL=$NAME python -m evals.latency --system ollama"
 echo "      OLLAMA_MODEL=$NAME python -m evals.run --systems ollama --set test --limit 200"

@@ -22,7 +22,7 @@ PRICES_SOURCE = "https://aistudio.google.com/docs/pricing"
 PRICES = {
     "gemini-3.8-flash": (0.75, 3.75),  # doubles to 1.50 / 7.50 on 2027-01-01
     "gemini-3.6-flash": (0.75, 3.75),
-    "gemini-3-flash-preview": (0.50, 3.00),
+    "gemini-3-flash-preview": (0.50, 3.00),  # legacy Flash; used here because of free-tier daily quotas
     "gemini-3.5-flash-lite": (0.30, 2.50),
     "gemini-3.1-flash-lite": (0.25, 1.50),
     "gemini-2.5-flash": (0.30, 2.50),
@@ -44,10 +44,10 @@ ROWS = [
     ("qwen3-0.6b-lora", "**Qwen3-0.6B fine-tuned (LoRA, Unsloth)**", "0.6B"),
     ("qwen3-1.7b-lora", "Qwen3-1.7B fine-tuned (LoRA, Unsloth)", "1.7B"),
     ("ollama-triage-smollm2-135m", "SmolLM2-135M fine-tuned, 4-bit GGUF in Ollama", "135M (Q4_K_M)"),
-    ("ollama-triage-qwen3-0.6b", "**Qwen3-0.6B fine-tuned, 4-bit GGUF in Ollama**", "0.6B (Q4_K_M)"),
+    ("ollama-triage-qwen3-0.6b", "**Qwen3-0.6B fine-tuned, 4-bit GGUF in Ollama (Mac)**", "0.6B (Q4_K_M, 396 MB)"),
     ("ollama-triage-qwen3-1.7b", "Qwen3-1.7B fine-tuned, 4-bit GGUF in Ollama", "1.7B (Q4_K_M)"),
     ("classic", "TF-IDF + logistic regression + regex", "-"),
-    ("hosted", "Gemini Flash (API), instructions only", "large (undisclosed)"),
+    ("hosted", "Gemini 3 Flash (API), instructions only", "large (undisclosed)"),
 ]
 
 START, END = "<!-- RESULTS:START -->", "<!-- RESULTS:END -->"
@@ -57,7 +57,11 @@ def latency_cell(report: dict, system: str, r: dict) -> tuple[str, float | None,
     """Best available latency: one request at a time if measured, else batched time per message."""
     single = report.get(f"latency/{system}")
     if single:
-        return f"{single['median_ms']:.0f} ms ({single['where']}, 1 request)", single["median_ms"], single.get("device", "cpu")
+        cell = f"{single['median_ms']:.0f} ms ({single['where']}, 1 request)"
+        cpu = report.get(f"latency/{system}-cpu")
+        if cpu:
+            cell += f"; {cpu['median_ms']:.0f} ms CPU only"
+        return cell, single["median_ms"], single.get("device", "cpu")
     if r.get("median_ms_per_request") is not None:
         where = "API" if system == "hosted" else "Mac CPU, Ollama"
         dev = "api" if system == "hosted" else "ollama"
@@ -80,7 +84,11 @@ def cost_cell(system: str, r: dict, ms: float | None, device: str) -> str:
         price = PRICES.get(model)
         if not price or not r.get("n"):
             return "see note"
-        per_req_in, per_req_out = r["input_tokens"] / r["n"], r["output_tokens"] / r["n"]
+        single = REPORT_CACHE.get("latency/hosted")
+        if single and single.get("model") == model:  # measured one message per request
+            per_req_in, per_req_out = single["input_tokens_per_request"], single["output_tokens_per_request"]
+        else:
+            per_req_in, per_req_out = r["input_tokens"] / r["n"], r["output_tokens"] / r["n"]
         usd = 1000 * (per_req_in * price[0] + per_req_out * price[1]) / 1e6
         return f"${usd:.2f} API ({per_req_in:.0f} in + {per_req_out:.0f} out tokens/req)"
     if ms is None:
@@ -89,7 +97,12 @@ def cost_cell(system: str, r: dict, ms: float | None, device: str) -> str:
     return f"$0 API (+ ~${compute:.4f} compute)"
 
 
+REPORT_CACHE: dict = {}
+
+
 def build_tables(report: dict) -> str:
+    REPORT_CACHE.clear()
+    REPORT_CACHE.update(report)
     judge = report.get("judge/test", {}).get("per_system", {})
     out = []
     out.append("**Held-out test set** (public dataset messages never used for training)\n")

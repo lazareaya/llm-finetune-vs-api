@@ -115,6 +115,56 @@ def ask_judge(client, model: str, message: str, reference: str, candidates: dict
     raise RuntimeError("unreachable")
 
 
+def ask_judge_group(client, model: str, items: list[tuple[str, str, dict[str, str]]],
+                    reasoning_effort: str, retries: int = 10) -> list[dict]:
+    """Several messages in one request, for free tiers with a small daily request quota.
+    Each message keeps its own reference and its own shuffled letters."""
+    if len(items) == 1:
+        return [ask_judge(client, model, *items[0], reasoning_effort, retries)]
+    blocks = []
+    for k, (message, reference, candidates) in enumerate(items, 1):
+        listing = "\n".join(f"{letter}: {text[:300]!s}" for letter, text in candidates.items())
+        blocks.append(f"=== Item {k} ===\nMessage:\n{message}\n\nReference record:\n{reference}\n\nCandidates:\n{listing}")
+    rubric = RUBRIC.replace(
+        'Answer with JSON only: {"grades": {"A": <1-5>, "B": <1-5>, ...}, "notes": "<one short sentence>"}',
+        'There are several independent items; grade each one separately. Answer with JSON only: '
+        '{"items": {"1": {"grades": {"A": <1-5>, ...}, "notes": "<one short sentence>"}, "2": {...}, ...}}')
+    kwargs = dict(
+        model=model,
+        messages=[{"role": "system", "content": rubric}, {"role": "user", "content": "\n\n".join(blocks)}],
+        temperature=0,
+        max_tokens=int(os.getenv("JUDGE_MAX_TOKENS", "16384")),
+        response_format={"type": "json_object"},
+    )
+    if reasoning_effort:
+        kwargs["reasoning_effort"] = reasoning_effort
+    for attempt in range(retries + 1):
+        try:
+            response = client.chat.completions.create(**kwargs)
+            text = response.choices[0].message.content or ""
+            match = re.search(r"\{.*\}", text, flags=re.DOTALL)
+            parsed = (json.loads(match.group(0)) if match else {}).get("items", {})
+            rows = []
+            for k, (_, _, candidates) in enumerate(items, 1):
+                entry = parsed.get(str(k), {})
+                grades = {a: int(v) for a, v in entry.get("grades", {}).items() if str(v).strip().isdigit()}
+                if not set(grades) >= set(candidates):
+                    raise ValueError(f"item {k}: no grade for every candidate")
+                rows.append({"grades": grades, "notes": entry.get("notes", "")})
+            usage = getattr(response, "usage", None)
+            tin = (getattr(usage, "prompt_tokens", 0) or 0) if usage else 0
+            tout = ((getattr(usage, "total_tokens", 0) or 0) - tin) if usage else 0
+            for row in rows:
+                row["input_tokens"], row["output_tokens"] = tin / len(rows), tout / len(rows)
+            return rows
+        except Exception as exc:
+            status = getattr(exc, "status_code", None)
+            if attempt == retries or (status is not None and status not in (429, 500, 502, 503, 504)):
+                raise
+            time.sleep(min(60, 5 * 2**attempt))
+    raise RuntimeError("unreachable")
+
+
 def cohen_kappa(a: list[bool], b: list[bool]) -> float | None:
     n = len(a)
     if not n:
@@ -139,6 +189,8 @@ def main() -> None:
     parser.add_argument("--systems", nargs="+", default=DEFAULT_SYSTEMS)
     parser.add_argument("--model", default=os.getenv("JUDGE_MODEL") or os.getenv("OPENAI_MODEL") or "gemini-3.8-flash")
     parser.add_argument("--reasoning-effort", default=os.getenv("JUDGE_REASONING_EFFORT", "low"))
+    parser.add_argument("--per-call", type=int, default=int(os.getenv("JUDGE_PER_CALL", "1")),
+                        help="messages graded per request (free tiers allow few requests per day)")
     args = parser.parse_args()
 
     from openai import OpenAI
@@ -156,6 +208,7 @@ def main() -> None:
     disagreements: list[dict] = []
     judge_in = judge_out = 0
 
+    plan = []
     for i in range(n):
         first = outputs[systems[0]][i]
         order = systems[:]
@@ -163,13 +216,23 @@ def main() -> None:
         letters = {chr(65 + k): s for k, s in enumerate(order)}
         candidates = {letter: outputs[s][i]["output"] for letter, s in letters.items()}
         key = json.dumps([args.model, args.reasoning_effort, first["message"], candidates], ensure_ascii=False)
-        row = cache.get(key)
-        if row is None:
-            row = {"key": key, **ask_judge(client, args.model, first["message"], first["expected"],
-                                           candidates, args.reasoning_effort)}
-            with CACHE.open("a") as fh:
+        plan.append((i, first, letters, candidates, key))
+
+    todo = [p for p in plan if p[4] not in cache]
+    for start in range(0, len(todo), args.per_call):
+        chunk = todo[start : start + args.per_call]
+        rows = ask_judge_group(client, args.model, [(p[1]["message"], p[1]["expected"], p[3]) for p in chunk],
+                               args.reasoning_effort)
+        with CACHE.open("a") as fh:
+            for p, row in zip(chunk, rows):
+                row = {"key": p[4], **row}
                 fh.write(json.dumps(row, ensure_ascii=False) + "\n")
-            cache[key] = row
+                cache[p[4]] = row
+        print(f"\r{start + len(chunk)}/{len(todo)} new messages graded", end="", flush=True)
+    print()
+
+    for i, first, letters, candidates, key in plan:
+        row = cache[key]
         judge_in += row.get("input_tokens", 0)
         judge_out += row.get("output_tokens", 0)
         for letter, system in letters.items():
@@ -183,8 +246,6 @@ def main() -> None:
                     "output": outputs[system][i]["output"][:200], "grade": grade, "exact": ok,
                     "judge_notes": row.get("notes", ""),
                 })
-        print(f"\r{i + 1}/{n} messages graded", end="", flush=True)
-    print()
 
     all_grades = [g for s in systems for g in grades[s]]
     all_exact = [e for s in systems for e in exact[s]]
@@ -203,6 +264,7 @@ def main() -> None:
     wrong_grades = [g for g, e in zip(all_grades, all_exact) if not e]
     result = {
         "judge_model": args.model,
+        "messages_per_request": args.per_call,
         "reasoning_effort": args.reasoning_effort or None,
         "set": args.set_name,
         "messages": n,

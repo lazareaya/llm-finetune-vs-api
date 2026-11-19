@@ -19,13 +19,13 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 CSS = """
-@page { size: A4; margin: 16mm 15mm; }
-body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: 9.6pt; line-height: 1.42; color: #1a1a1a; }
+@page { size: A4; margin: 13mm 13mm; }
+body { font-family: -apple-system, "Helvetica Neue", Arial, sans-serif; font-size: 9pt; line-height: 1.36; color: #1a1a1a; }
 h1 { font-size: 17pt; margin: 0 0 4pt; }
 h2 { font-size: 12.5pt; margin: 14pt 0 4pt; border-bottom: 1px solid #ccc; padding-bottom: 2pt; }
 h3 { font-size: 10.5pt; margin: 10pt 0 3pt; }
 p, li { margin: 3pt 0; }
-table { border-collapse: collapse; width: 100%; margin: 6pt 0; font-size: 7.6pt; page-break-inside: avoid; }
+table { border-collapse: collapse; width: 100%; margin: 6pt 0; font-size: 7.2pt; page-break-inside: avoid; }
 th, td { border: 1px solid #c8c8c8; padding: 2.5pt 4pt; text-align: left; vertical-align: top; }
 th { background: #f1f3f5; }
 code { font-family: Menlo, monospace; font-size: 8pt; background: #f4f4f4; padding: 0 2px; }
@@ -58,7 +58,7 @@ def training_block() -> str:
         rows.append(
             f"| {name} | {where} | {log.get('trainable_parameters', 0):,} ({log.get('trainable_pct')}%) | "
             f"{log.get('steps')} | {log.get('training_minutes')} min | "
-            f"{evals[-1] if evals else '-'} |"
+            f"{round(evals[-1], 4) if evals else '-'} |"
         )
     if len(rows) < 2:
         return ""

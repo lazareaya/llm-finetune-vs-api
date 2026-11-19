@@ -1,0 +1,338 @@
+{
+  "judge_model": "gemini-3.5-flash-lite",
+  "messages_per_request": 10,
+  "reasoning_effort": "low",
+  "set": "test",
+  "messages": 100,
+  "judged_outputs": 700,
+  "judge_input_tokens": 28394.999999999996,
+  "judge_output_tokens": 8919.999999999995,
+  "per_system": {
+    "base-prompt": {
+      "n": 100,
+      "mean_grade": 1,
+      "grade_4_or_5_pct": 0.0,
+      "exact_record_pct": 0.0,
+      "grade_distribution": {
+        "1": 100,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 0
+      }
+    },
+    "base-examples": {
+      "n": 100,
+      "mean_grade": 2.99,
+      "grade_4_or_5_pct": 28.0,
+      "exact_record_pct": 8.0,
+      "grade_distribution": {
+        "1": 0,
+        "2": 37,
+        "3": 35,
+        "4": 20,
+        "5": 8
+      }
+    },
+    "lora": {
+      "n": 100,
+      "mean_grade": 4.98,
+      "grade_4_or_5_pct": 99.0,
+      "exact_record_pct": 99.0,
+      "grade_distribution": {
+        "1": 0,
+        "2": 0,
+        "3": 1,
+        "4": 0,
+        "5": 99
+      }
+    },
+    "qwen3-0.6b-prompt": {
+      "n": 100,
+      "mean_grade": 3.03,
+      "grade_4_or_5_pct": 24.0,
+      "exact_record_pct": 12.0,
+      "grade_distribution": {
+        "1": 0,
+        "2": 25,
+        "3": 51,
+        "4": 20,
+        "5": 4
+      }
+    },
+    "qwen3-0.6b-lora": {
+      "n": 100,
+      "mean_grade": 5,
+      "grade_4_or_5_pct": 100.0,
+      "exact_record_pct": 100.0,
+      "grade_distribution": {
+        "1": 0,
+        "2": 0,
+        "3": 0,
+        "4": 0,
+        "5": 100
+      }
+    },
+    "classic": {
+      "n": 100,
+      "mean_grade": 4.95,
+      "grade_4_or_5_pct": 98.0,
+      "exact_record_pct": 98.0,
+      "grade_distribution": {
+        "1": 0,
+        "2": 1,
+        "3": 1,
+        "4": 0,
+        "5": 98
+      }
+    },
+    "hosted": {
+      "n": 100,
+      "mean_grade": 4.94,
+      "grade_4_or_5_pct": 98.0,
+      "exact_record_pct": 96.0,
+      "grade_distribution": {
+        "1": 0,
+        "2": 0,
+        "3": 2,
+        "4": 2,
+        "5": 96
+      }
+    }
+  },
+  "agreement": {
+    "binary_agreement_pct": 94.6,
+    "cohen_kappa": 0.886,
+    "mean_grade_when_exact": 4.98,
+    "mean_grade_when_wrong": 2.21,
+    "exact_but_graded_1_to_3": 2,
+    "wrong_but_graded_4_or_5": 36
+  },
+  "disagreement_examples": [
+    {
+      "system": "base-examples",
+      "message": "I am trying to leave my feedback for a service",
+      "expected": "{\"category\": \"FEEDBACK\", \"intent\": \"review\", \"order_number\": null}",
+      "output": "{\"category\": \"FEEDBACK\", \"intent\": \"feedback\", \"order_number\": null}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Candidate C used feedback intent which is acceptable."
+    },
+    {
+      "system": "base-examples",
+      "message": "is it possible to change the delivery address?",
+      "expected": "{\"category\": \"SHIPPING\", \"intent\": \"change_shipping_address\", \"order_number\": null}",
+      "output": "{\"category\": \"SHIPPING\", \"intent\": \"set_up_shipping_address\", \"order_number\": null}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Candidate D gave a very close shipping intent."
+    },
+    {
+      "system": "base-examples",
+      "message": "help to see how long it takes for my item to arrive",
+      "expected": "{\"category\": \"DELIVERY\", \"intent\": \"delivery_period\", \"order_number\": null}",
+      "output": "{\"category\": \"ORDER\", \"intent\": \"check_order_time\", \"order_number\": null}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Candidate B used order category and check_order_time which is usable."
+    },
+    {
+      "system": "qwen3-0.6b-prompt",
+      "message": "assistance to talk to somebody",
+      "expected": "{\"category\": \"CONTACT\", \"intent\": \"contact_human_agent\", \"order_number\": null}",
+      "output": "{\"category\": \"CONTACT\", \"intent\": \"contact_customer_service\"}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Most models correctly identified the contact human agent intent."
+    },
+    {
+      "system": "base-examples",
+      "message": "assistance to talk to somebody",
+      "expected": "{\"category\": \"CONTACT\", \"intent\": \"contact_human_agent\", \"order_number\": null}",
+      "output": "{\"category\": \"CONTACT\", \"intent\": \"contact_customer_service\", \"order_number\": null}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Most models correctly identified the contact human agent intent."
+    },
+    {
+      "system": "qwen3-0.6b-prompt",
+      "message": "unsubscribe to company newsletter",
+      "expected": "{\"category\": \"SUBSCRIPTION\", \"intent\": \"newsletter_subscription\", \"order_number\": null}",
+      "output": "{\"category\": \"SUBSCRIPTION\", \"intent\": \"unsubscribe\"}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Subscription newsletter intent was well recognized by most."
+    },
+    {
+      "system": "qwen3-0.6b-prompt",
+      "message": "I need to chat with an assistant",
+      "expected": "{\"category\": \"CONTACT\", \"intent\": \"contact_human_agent\", \"order_number\": null}",
+      "output": "{\"category\": \"CONTACT\", \"intent\": \"contact_customer_service\"}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Most models successfully routed the chat request to contact human agent."
+    },
+    {
+      "system": "base-examples",
+      "message": "I need help to submit feedback about your products",
+      "expected": "{\"category\": \"FEEDBACK\", \"intent\": \"review\", \"order_number\": null}",
+      "output": "{\"category\": \"FEEDBACK\", \"intent\": \"feedback\", \"order_number\": null}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Feedback review intent captured by the majority of parsers."
+    },
+    {
+      "system": "base-examples",
+      "message": "help me to change to the Standard account",
+      "expected": "{\"category\": \"ACCOUNT\", \"intent\": \"switch_account\", \"order_number\": null}",
+      "output": "{\"category\": \"ACCOUNT\", \"intent\": \"edit_account\", \"order_number\": null}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Candidates A-D are correct, E is usable, F is text, G has a wrong order number."
+    },
+    {
+      "system": "qwen3-0.6b-prompt",
+      "message": "I am tryinng to create a Pro account",
+      "expected": "{\"category\": \"ACCOUNT\", \"intent\": \"create_account\", \"order_number\": null}",
+      "output": "{\"category\": \"ACCOUNT\", \"intent\": \"create_account\", \"order_number\": \"none\"}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "A, B, F, G are correct, C has 'none' instead of null, D is partly right, E is text."
+    },
+    {
+      "system": "base-examples",
+      "message": "ya have a method to send feedback",
+      "expected": "{\"category\": \"FEEDBACK\", \"intent\": \"review\", \"order_number\": null}",
+      "output": "{\"category\": \"FEEDBACK\", \"intent\": \"feedback\", \"order_number\": null}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "A, C, D, G are correct, E is usable, B is partly right, F is text."
+    },
+    {
+      "system": "qwen3-0.6b-prompt",
+      "message": "modifying ingormation on Pro account",
+      "expected": "{\"category\": \"ACCOUNT\", \"intent\": \"edit_account\", \"order_number\": null}",
+      "output": "{\"category\": \"ACCOUNT\", \"intent\": \"edit_account\", \"order_number\": \"null\"}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Most successfully identified account editing."
+    },
+    {
+      "system": "base-examples",
+      "message": "where to create a gold account",
+      "expected": "{\"category\": \"ACCOUNT\", \"intent\": \"create_account\", \"order_number\": null}",
+      "output": "{\"category\": \"ACCOUNT\", \"intent\": \"create_gold_account\", \"order_number\": null}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Account creation intent correctly captured by most JSON responses."
+    },
+    {
+      "system": "qwen3-0.6b-prompt",
+      "message": "where to create a gold account",
+      "expected": "{\"category\": \"ACCOUNT\", \"intent\": \"create_account\", \"order_number\": null}",
+      "output": "{\"category\": \"ACCOUNT\", \"intent\": \"create_account\"}",
+      "grade": 3,
+      "exact": true,
+      "judge_notes": "Account creation intent correctly captured by most JSON responses."
+    },
+    {
+      "system": "base-examples",
+      "message": "want assistance seeing ur payment methods",
+      "expected": "{\"category\": \"PAYMENT\", \"intent\": \"check_payment_methods\", \"order_number\": null}",
+      "output": "{\"category\": \"PAYMENT\", \"intent\": \"edit_payment_methods\", \"order_number\": null}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Payment methods checking correctly identified in most JSON outputs."
+    },
+    {
+      "system": "base-examples",
+      "message": "want assistance to send feedback about your company",
+      "expected": "{\"category\": \"FEEDBACK\", \"intent\": \"review\", \"order_number\": null}",
+      "output": "{\"category\": \"FEEDBACK\", \"intent\": \"feedback\", \"order_number\": null}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Feedback and review intent successfully captured by most."
+    },
+    {
+      "system": "base-examples",
+      "message": "I want information about my platinum account termination",
+      "expected": "{\"category\": \"ACCOUNT\", \"intent\": \"delete_account\", \"order_number\": null}",
+      "output": "{\"category\": \"ACCOUNT\", \"intent\": \"terminate_account\", \"order_number\": null}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Most candidates correctly identified the intent, with A being a minor variation."
+    },
+    {
+      "system": "qwen3-0.6b-prompt",
+      "message": "I can't sign up, I want help to inform of signup issues",
+      "expected": "{\"category\": \"ACCOUNT\", \"intent\": \"registration_problems\", \"order_number\": null}",
+      "output": "{\"category\": \"ACCOUNT\", \"intent\": \"registration_problems\", \"order_number\": \"N/A\"}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Registration problems category and intent correctly parsed by most JSON responses."
+    },
+    {
+      "system": "base-examples",
+      "message": "where to acquire several items",
+      "expected": "{\"category\": \"ORDER\", \"intent\": \"place_order\", \"order_number\": null}",
+      "output": "{\"category\": \"ORDER\", \"intent\": \"check_order_items\", \"order_number\": null}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Place order intent generally well matched, B included a hallucinated order number."
+    },
+    {
+      "system": "qwen3-0.6b-prompt",
+      "message": "can ya help mereceive ur company newsletter",
+      "expected": "{\"category\": \"SUBSCRIPTION\", \"intent\": \"newsletter_subscription\", \"order_number\": null}",
+      "output": "{\"category\": \"SUBSCRIPTION\", \"intent\": \"newsletter_subscription\", \"order_number\": \"none\"}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Most candidates correctly classified the newsletter subscription."
+    },
+    {
+      "system": "base-examples",
+      "message": "can I remove a platinum account?",
+      "expected": "{\"category\": \"ACCOUNT\", \"intent\": \"delete_account\", \"order_number\": null}",
+      "output": "{\"category\": \"ACCOUNT\", \"intent\": \"remove_account\", \"order_number\": null}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Most candidates correctly handled account deletion/removal."
+    },
+    {
+      "system": "qwen3-0.6b-prompt",
+      "message": "where do I check what hours I can reach customer service?",
+      "expected": "{\"category\": \"CONTACT\", \"intent\": \"contact_customer_service\", \"order_number\": null}",
+      "output": "{\"category\": \"CONTACT\", \"intent\": \"contact_customer_service\"}",
+      "grade": 3,
+      "exact": true,
+      "judge_notes": "Most candidates correctly identified contact customer service."
+    },
+    {
+      "system": "base-examples",
+      "message": "where do I check what hours I can reach customer service?",
+      "expected": "{\"category\": \"CONTACT\", \"intent\": \"contact_customer_service\", \"order_number\": null}",
+      "output": "{\"category\": \"SERVICE\", \"intent\": \"check_service_hours\", \"order_number\": null}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Most candidates correctly identified contact customer service."
+    },
+    {
+      "system": "base-examples",
+      "message": "I need help cancelling my company newsletter subscription",
+      "expected": "{\"category\": \"SUBSCRIPTION\", \"intent\": \"newsletter_subscription\", \"order_number\": null}",
+      "output": "{\"category\": \"REPORT\", \"intent\": \"cancel_subscription\", \"order_number\": null}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Most candidates correctly identified newsletter subscription."
+    },
+    {
+      "system": "base-examples",
+      "message": "I never use my Premium account, could I cancel it?",
+      "expected": "{\"category\": \"ACCOUNT\", \"intent\": \"delete_account\", \"order_number\": null}",
+      "output": "{\"category\": \"ACCOUNT\", \"intent\": \"cancel\", \"order_number\": null}",
+      "grade": 4,
+      "exact": false,
+      "judge_notes": "Candidate D is text, C has wrong category, A used close intent 'cancel'."
+    }
+  ]
+}

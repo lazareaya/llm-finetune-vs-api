@@ -9,6 +9,7 @@ Results go into evals/report.json under "latency" (original) or "latency/<system
 from __future__ import annotations
 
 import json
+import os
 import statistics
 import time
 
@@ -66,11 +67,30 @@ def main() -> None:
     machine = f"{platform.system()} {platform.machine()}"
     report = json.loads(REPORT.read_text()) if REPORT.exists() else {}
 
-    if args.system == "ollama":
+    if args.system == "hosted":
+        # One message per request, as a production API would call it: latency and tokens per request.
+        from triage.providers import OpenAIProvider
+
+        provider = OpenAIProvider(settings.openai_model, batch_size=1,
+                                  cache_path=REPORT.parent / "cache" / "hosted.jsonl")
+        provider.complete(messages)
+        times = sorted(provider.latencies_ms)
+        result = {
+            "messages": len(times), "model": settings.openai_model,
+            "median_ms": round(statistics.median(times)), "p95_ms": round(times[int(0.95 * (len(times) - 1))]),
+            "input_tokens_per_request": round(provider.input_tokens / len(times), 1),
+            "output_tokens_per_request": round(provider.output_tokens / len(times), 1),
+            "device": "api", "where": "API, free tier",
+        }
+        print("hosted", result)
+        report["latency/hosted"] = result
+    elif args.system == "ollama":
+        cpu_only = os.getenv("OLLAMA_NUM_GPU") == "0"
         result = time_ollama(messages)
-        result.update(device="ollama", where=f"{machine}, CPU+GPU via Ollama, 4-bit")
+        hw = "CPU only" if cpu_only else "Apple GPU (Metal)"
+        result.update(device="ollama", where=f"Mac 8 GB, {hw}, Ollama 4-bit")
         print("ollama", result)
-        report[f"latency/ollama-{result['model']}"] = result
+        report[f"latency/ollama-{result['model']}{'-cpu' if cpu_only else ''}"] = result
     elif args.system == "lora":  # the original measurement: merged vs unmerged adapter on the CPU
         set_threads(settings.threads)
         tokenizer = load_tokenizer(settings.base_model)
