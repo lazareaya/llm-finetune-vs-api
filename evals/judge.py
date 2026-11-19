@@ -78,7 +78,7 @@ def _cache() -> dict[str, dict]:
 
 
 def ask_judge(client, model: str, message: str, reference: str, candidates: dict[str, str],
-              reasoning_effort: str, retries: int = 6) -> dict:
+              reasoning_effort: str, retries: int = 10) -> dict:
     listing = "\n".join(f"{letter}: {text[:300]!s}" for letter, text in candidates.items())
     user = f"Message:\n{message}\n\nReference record:\n{reference}\n\nCandidates:\n{listing}"
     kwargs = dict(
@@ -149,7 +149,7 @@ def main() -> None:
     for system, rows in outputs.items():  # every system must have answered the same messages
         assert [r["message"] for r in rows[:n]] == [r["message"] for r in outputs[systems[0]][:n]], system
 
-    client, cache = OpenAI(), _cache()
+    client, cache = OpenAI(timeout=float(os.getenv("OPENAI_TIMEOUT", "120")), max_retries=0), _cache()
     CACHE.parent.mkdir(parents=True, exist_ok=True)
     grades: dict[str, list[int]] = {s: [] for s in systems}
     exact: dict[str, list[bool]] = {s: [] for s in systems}

@@ -8,7 +8,7 @@ date: "November 2026"
 # Small fine-tuned LLM vs. large API model for structured extraction
 
 *LoRA fine-tuning of Qwen3, LLM-as-a-judge, cost, latency and 4-bit quantisation on a customer-support triage task.*
-Code, data pipeline and raw outputs: <https://github.com/lazareaya/llm-finetune-vs-api>. Model: HF_MODEL_LINK.
+Code, data pipeline and raw outputs: <https://github.com/lazareaya/llm-finetune-vs-api>. Model: [LazareA/qwen3-0.6b-support-triage-lora](https://huggingface.co/LazareA/qwen3-0.6b-support-triage-lora).
 
 ## 1. Question
 

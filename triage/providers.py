@@ -123,12 +123,13 @@ class OpenAIProvider:
         max_tokens: int | None = None,
         reasoning_effort: str | None = None,
         cache_path: Path | None = None,
-        retries: int = 6,
+        retries: int = 10,
     ):
         if client is None:
             from openai import OpenAI
 
-            client = OpenAI()  # reads OPENAI_API_KEY and OPENAI_BASE_URL from the environment
+            # Reads OPENAI_API_KEY and OPENAI_BASE_URL; retries are handled below, with a cap per call.
+            client = OpenAI(timeout=float(os.getenv("OPENAI_TIMEOUT", "90")), max_retries=0)
         self.client, self.model = client, model
         # Models that think before answering spend output tokens on it, so they need a larger cap.
         self.max_tokens = max_tokens or int(os.getenv("OPENAI_MAX_TOKENS", "60"))
@@ -136,6 +137,8 @@ class OpenAIProvider:
         self.cache_path, self.retries = cache_path, retries
         self.input_tokens = self.output_tokens = 0
         self.latencies_ms: list[float] = []
+        self.rate_limited = 0
+        self._last_ms = 0.0
         self._cache: dict[str, dict] = {}
         if cache_path and Path(cache_path).exists():
             for line in Path(cache_path).read_text().splitlines():
@@ -154,10 +157,17 @@ class OpenAIProvider:
             kwargs["reasoning_effort"] = self.reasoning_effort
         for attempt in range(self.retries + 1):
             try:
-                return self.client.chat.completions.create(**kwargs)
+                started = time.perf_counter()
+                response = self.client.chat.completions.create(**kwargs)
+                # Latency of the successful call only: waiting for a free-tier rate limit is not latency.
+                self._last_ms = 1000 * (time.perf_counter() - started)
+                return response
             except Exception as exc:  # rate limits on free tiers: wait and try again
                 status = getattr(exc, "status_code", None)
-                if attempt == self.retries or status not in (429, 500, 502, 503, 504):
+                if status == 429:
+                    self.rate_limited += 1
+                # status None = timeout or connection error: also worth another try.
+                if attempt == self.retries or status not in (None, 429, 500, 502, 503, 504):
                     raise
                 time.sleep(min(60, 5 * 2**attempt))
 
@@ -167,9 +177,8 @@ class OpenAIProvider:
             key = f"{self.model}|{self.reasoning_effort}|{message}"
             row = self._cache.get(key)
             if row is None:
-                started = time.perf_counter()
                 response = self._call(message)
-                ms = 1000 * (time.perf_counter() - started)
+                ms = self._last_ms
                 usage = getattr(response, "usage", None)
                 prompt_t = getattr(usage, "prompt_tokens", 0) or 0 if usage else 0
                 # Billed output includes any hidden reasoning tokens: total minus prompt.

@@ -15,8 +15,8 @@ Data: the public [Bitext customer-support dataset](https://huggingface.co/datase
 
 | | |
 |---|---|
-| Fine-tuned model (LoRA adapter) | HF_MODEL_LINK |
-| 4-bit GGUF for Ollama / llama.cpp | HF_GGUF_LINK |
+| Fine-tuned model (LoRA adapter) | [LazareA/qwen3-0.6b-support-triage-lora](https://huggingface.co/LazareA/qwen3-0.6b-support-triage-lora) |
+| 4-bit GGUF for Ollama / llama.cpp | [LazareA/qwen3-0.6b-support-triage-GGUF](https://huggingface.co/LazareA/qwen3-0.6b-support-triage-GGUF) |
 | Technical report (EN) | [report/report.pdf](report/report.pdf) · [Markdown](report/report.md) |
 | Colab training notebook (Unsloth) | [notebooks/finetune_qwen3_unsloth.ipynb](notebooks/finetune_qwen3_unsloth.ipynb) [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/lazareaya/llm-finetune-vs-api/blob/main/notebooks/finetune_qwen3_unsloth.ipynb) |
 
