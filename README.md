@@ -27,6 +27,27 @@ LLM judge (`evals/judge.py`), and priced per 1,000 requests (`evals/final_table.
 All raw outputs are in [`evals/outputs/`](evals/outputs) and all numbers in [`evals/report.json`](evals/report.json).
 
 <!-- RESULTS:START -->
+**Held-out test set** (public dataset messages never used for training)
+
+| System | Size | Whole record correct | Valid JSON | Judge grade (1-5) | Latency per message | Cost per 1,000 requests |
+|---|---|---|---|---|---|---|
+| SmolLM2-135M, instructions only | 135M | 0.0% (n=100) | 0.0% | - | 480 ms (CPU, batched) | $0 API (+ ~$0.0067 compute) |
+| SmolLM2-135M, instructions + 8 examples | 135M | 8.0% (n=100) | 100.0% | - | 865 ms (CPU, batched) | $0 API (+ ~$0.0120 compute) |
+| SmolLM2-135M fine-tuned (LoRA, original repo) | 135M | 97.4% (n=1000) | 99.9% | - | 766 ms (CPU, 1 request) | $0 API (+ ~$0.0106 compute) |
+| Qwen3-0.6B, instructions only | 0.6B | 14.0% (n=100) | 100.0% | - | 936 ms (Apple GPU, batched) | $0 API (+ ~$0.0130 compute) |
+| TF-IDF + logistic regression + regex | - | 95.5% (n=1000) | 100.0% | - | 0.01 ms (CPU) | $0 API (+ ~$0.0000 compute) |
+
+**Hand-written set** (60 messages in a different style, `evals/challenge.jsonl`)
+
+| System | Whole record correct | Intent correct | Order number found | Valid JSON |
+|---|---|---|---|---|
+| SmolLM2-135M, instructions only | 0.0% | 0.0% | 0.0% | 0.0% |
+| SmolLM2-135M, instructions + 8 examples | 1.7% | 16.7% | 6.2% | 98.3% |
+| SmolLM2-135M fine-tuned (LoRA, original repo) | 65.0% | 66.7% | 93.8% | 100.0% |
+| Qwen3-0.6B, instructions only | 15.0% | 28.3% | 68.8% | 100.0% |
+| TF-IDF + logistic regression + regex | 71.7% | 73.3% | 100.0% | 100.0% |
+
+Cost: Gemini Flash list price (https://aistudio.google.com/docs/pricing, checked 2026-11-19; thinking tokens are billed as output). Local compute is estimated at $0.05/h for a small CPU machine or laptop share and $0.35/h for a cloud T4 GPU, times the measured time per message (one machine, no parallelism).
 <!-- RESULTS:END -->
 
 <!-- FINDINGS:START -->

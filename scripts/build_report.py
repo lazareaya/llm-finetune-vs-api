@@ -41,6 +41,32 @@ CHROMES = [
 ]
 
 
+def training_block() -> str:
+    """One row per training run, from the training logs saved next to each adapter."""
+    import json
+
+    rows = []
+    logs = [("SmolLM2-135M (original, CPU)", ROOT / "adapter" / "training_log.json")]
+    logs += [(p.parent.name, p) for p in sorted((ROOT / "adapters").glob("*/training_log.json"))]
+    for name, path in logs:
+        if not path.exists():
+            continue
+        log = json.loads(path.read_text())
+        hist = log.get("history", [])
+        evals = [h["eval_loss"] for h in hist if "eval_loss" in h] or [h["val_loss"] for h in hist if "val_loss" in h]
+        where = log.get("gpu") or f"CPU, {log.get('cpu_threads', '?')} threads"
+        rows.append(
+            f"| {name} | {where} | {log.get('trainable_parameters', 0):,} ({log.get('trainable_pct')}%) | "
+            f"{log.get('steps')} | {log.get('training_minutes')} min | "
+            f"{evals[-1] if evals else '-'} |"
+        )
+    if len(rows) < 2:
+        return ""
+    head = ["| Run | Hardware | Trainable parameters | Steps | Training time | Final validation loss |",
+            "|---|---|---|---|---|---|"]
+    return "\n".join(["Training runs (from the logs saved next to each adapter):", ""] + head + rows)
+
+
 def main() -> None:
     import markdown
 
@@ -52,6 +78,11 @@ def main() -> None:
 
     md_path = ROOT / "report" / "report.md"
     text = md_path.read_text()
+    block = training_block()
+    if block:
+        text = re.sub(r"<!-- TRAINING:START -->.*?<!-- TRAINING:END -->",
+                      lambda _: f"<!-- TRAINING:START -->\n{block}\n<!-- TRAINING:END -->", text, flags=re.DOTALL)
+        md_path.write_text(text)
     text = re.sub(r"\A---\n.*?\n---\n", "", text, flags=re.DOTALL)  # YAML front matter
     text = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)  # block markers
     body = markdown.markdown(text, extensions=["tables", "fenced_code", "sane_lists"])

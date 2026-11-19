@@ -839,65 +839,70 @@
     "cpu_threads": 4,
     "merged": {
       "messages": 40,
-      "median_ms": 1059,
-      "p95_ms": 1325
+      "median_ms": 766,
+      "p95_ms": 2472
     },
     "unmerged": {
       "messages": 40,
-      "median_ms": 1253,
-      "p95_ms": 1596
+      "median_ms": 742,
+      "p95_ms": 931
     }
   },
   "qwen3-0.6b-prompt/challenge": {
-    "n": 8,
+    "n": 60,
     "valid_record_pct": 100.0,
-    "intent_accuracy_pct": 0.0,
-    "category_accuracy_pct": 37.5,
+    "intent_accuracy_pct": 28.3,
+    "category_accuracy_pct": 41.7,
     "order_number_accuracy_pct": 50.0,
-    "order_number_found_pct": null,
-    "order_number_invented_pct": 50.0,
-    "exact_record_pct": 0.0,
+    "order_number_found_pct": 68.8,
+    "order_number_invented_pct": 56.8,
+    "exact_record_pct": 15.0,
     "sent_to_review_pct": 50.0,
-    "accepted_exact_pct": 0.0,
-    "n_with_order_number": 0,
+    "accepted_exact_pct": 30.0,
+    "n_with_order_number": 16,
     "top_confusions": [
+      {
+        "expected": "contact_human_agent",
+        "got": "contact_customer_service",
+        "count": 3
+      },
+      {
+        "expected": "complaint",
+        "got": "contact_customer_service",
+        "count": 3
+      },
       {
         "expected": "recover_password",
         "got": "contact_customer_service",
         "count": 2
       },
       {
-        "expected": "create_account",
+        "expected": "check_refund_policy",
+        "got": "complaint",
+        "count": 2
+      },
+      {
+        "expected": "track_refund",
         "got": "contact_customer_service",
-        "count": 1
+        "count": 2
       },
       {
-        "expected": "create_account",
-        "got": "registration_problems",
-        "count": 1
-      },
-      {
-        "expected": "delete_account",
+        "expected": "change_shipping_address",
         "got": "contact_customer_service",
-        "count": 1
+        "count": 2
       },
       {
-        "expected": "delete_account",
-        "got": "switch_account",
-        "count": 1
-      },
-      {
-        "expected": "edit_account",
+        "expected": "set_up_shipping_address",
         "got": "contact_customer_service",
-        "count": 1
+        "count": 2
       },
       {
-        "expected": "edit_account",
-        "got": "recover_password",
-        "count": 1
+        "expected": "newsletter_subscription",
+        "got": "contact_customer_service",
+        "count": 2
       }
     ],
-    "ms_per_message_batched": 1996.96,
+    "ms_per_message_batched": 1233.5,
     "device": "mps",
     "samples": [
       {
@@ -924,6 +929,90 @@
         "message": "I moved to a new job and my email changed, where do I update the details on my profile?",
         "expected": "{\"category\": \"ACCOUNT\", \"intent\": \"edit_account\", \"order_number\": null}",
         "output": "{\"category\": \"CONTACT\", \"intent\": \"contact_customer_service\"}"
+      }
+    ]
+  },
+  "qwen3-0.6b-prompt/test": {
+    "n": 100,
+    "valid_record_pct": 100.0,
+    "intent_accuracy_pct": 36.0,
+    "category_accuracy_pct": 47.0,
+    "order_number_accuracy_pct": 42.0,
+    "order_number_found_pct": 81.8,
+    "order_number_invented_pct": 62.9,
+    "exact_record_pct": 14.0,
+    "sent_to_review_pct": 60.0,
+    "accepted_exact_pct": 35.0,
+    "n_with_order_number": 11,
+    "top_confusions": [
+      {
+        "expected": "check_cancellation_fee",
+        "got": "contact_customer_service",
+        "count": 6
+      },
+      {
+        "expected": "review",
+        "got": "contact_customer_service",
+        "count": 5
+      },
+      {
+        "expected": "get_refund",
+        "got": "complaint",
+        "count": 4
+      },
+      {
+        "expected": "change_shipping_address",
+        "got": "contact_customer_service",
+        "count": 4
+      },
+      {
+        "expected": "delivery_period",
+        "got": "contact_customer_service",
+        "count": 4
+      },
+      {
+        "expected": "contact_human_agent",
+        "got": "contact_customer_service",
+        "count": 3
+      },
+      {
+        "expected": "track_refund",
+        "got": "contact_customer_service",
+        "count": 3
+      },
+      {
+        "expected": "set_up_shipping_address",
+        "got": "contact_customer_service",
+        "count": 3
+      }
+    ],
+    "ms_per_message_batched": 935.75,
+    "device": "mps",
+    "samples": [
+      {
+        "message": "I would like to ask for compensations",
+        "expected": "{\"category\": \"REFUND\", \"intent\": \"get_refund\", \"order_number\": null}",
+        "output": "{\"category\": \"FEEDBACK\", \"intent\": \"complaint\"}"
+      },
+      {
+        "message": "can you tell me your damn payment methods?",
+        "expected": "{\"category\": \"PAYMENT\", \"intent\": \"check_payment_methods\", \"order_number\": null}",
+        "output": "{\"category\": \"PAYMENT\", \"intent\": \"check_payment_methods\"}"
+      },
+      {
+        "message": "have a question about the termination of a Freemiumaccount",
+        "expected": "{\"category\": \"ACCOUNT\", \"intent\": \"delete_account\", \"order_number\": null}",
+        "output": "{\"category\": \"CONTACT\", \"intent\": \"contact_customer_service\", \"order_number\": \"null\"}"
+      },
+      {
+        "message": "I am trying to leave my feedback for a service",
+        "expected": "{\"category\": \"FEEDBACK\", \"intent\": \"review\", \"order_number\": null}",
+        "output": "{\"category\": \"CONTACT\", \"intent\": \"contact_customer_service\", \"order_number\": \"none\"}"
+      },
+      {
+        "message": "how do i see purchase  38133969 status",
+        "expected": "{\"category\": \"ORDER\", \"intent\": \"track_order\", \"order_number\": \"38133969\"}",
+        "output": "{\"category\": \"ORDER\", \"intent\": \"track_order\", \"order_number\": \"38133969\"}"
       }
     ]
   }

@@ -108,6 +108,27 @@ price ($0.05/h for a CPU share, $0.35/h for a cloud T4).
 ## 4. Results
 
 <!-- RESULTS:START -->
+**Held-out test set** (public dataset messages never used for training)
+
+| System | Size | Whole record correct | Valid JSON | Judge grade (1-5) | Latency per message | Cost per 1,000 requests |
+|---|---|---|---|---|---|---|
+| SmolLM2-135M, instructions only | 135M | 0.0% (n=100) | 0.0% | - | 480 ms (CPU, batched) | $0 API (+ ~$0.0067 compute) |
+| SmolLM2-135M, instructions + 8 examples | 135M | 8.0% (n=100) | 100.0% | - | 865 ms (CPU, batched) | $0 API (+ ~$0.0120 compute) |
+| SmolLM2-135M fine-tuned (LoRA, original repo) | 135M | 97.4% (n=1000) | 99.9% | - | 766 ms (CPU, 1 request) | $0 API (+ ~$0.0106 compute) |
+| Qwen3-0.6B, instructions only | 0.6B | 14.0% (n=100) | 100.0% | - | 936 ms (Apple GPU, batched) | $0 API (+ ~$0.0130 compute) |
+| TF-IDF + logistic regression + regex | - | 95.5% (n=1000) | 100.0% | - | 0.01 ms (CPU) | $0 API (+ ~$0.0000 compute) |
+
+**Hand-written set** (60 messages in a different style, `evals/challenge.jsonl`)
+
+| System | Whole record correct | Intent correct | Order number found | Valid JSON |
+|---|---|---|---|---|
+| SmolLM2-135M, instructions only | 0.0% | 0.0% | 0.0% | 0.0% |
+| SmolLM2-135M, instructions + 8 examples | 1.7% | 16.7% | 6.2% | 98.3% |
+| SmolLM2-135M fine-tuned (LoRA, original repo) | 65.0% | 66.7% | 93.8% | 100.0% |
+| Qwen3-0.6B, instructions only | 15.0% | 28.3% | 68.8% | 100.0% |
+| TF-IDF + logistic regression + regex | 71.7% | 73.3% | 100.0% | 100.0% |
+
+Cost: Gemini Flash list price (https://aistudio.google.com/docs/pricing, checked 2026-11-19; thinking tokens are billed as output). Local compute is estimated at $0.05/h for a small CPU machine or laptop share and $0.35/h for a cloud T4 GPU, times the measured time per message (one machine, no parallelism).
 <!-- RESULTS:END -->
 
 <!-- FINDINGS:START -->
@@ -116,6 +137,30 @@ price ($0.05/h for a CPU share, $0.35/h for a cloud T4).
 ## 5. Error analysis
 
 <!-- ERRORS:START -->
+Each wrong record counted once, in the first bucket that applies.
+
+| System (test set) | n | Errors | no valid JSON | unknown label | wrong category | right category, wrong intent | order number missed | order number invented | order number wrong |
+|---|---|---|---|---|---|---|---|---|---|
+| SmolLM2-135M, instructions only | 100 | 100 | 100 | 0 | 0 | 0 | 0 | 0 | 0 |
+| SmolLM2-135M, instructions + 8 examples | 100 | 92 | 0 | 72 | 15 | 4 | 1 | 0 | 0 |
+| SmolLM2-135M fine-tuned (LoRA, original repo) | 1000 | 26 | 1 | 2 | 9 | 12 | 0 | 2 | 0 |
+| Qwen3-0.6B, instructions only | 100 | 86 | 0 | 7 | 47 | 14 | 0 | 16 | 2 |
+| TF-IDF + logistic regression + regex | 1000 | 45 | 0 | 0 | 4 | 5 | 0 | 36 | 0 |
+
+| System (challenge set) | n | Errors | no valid JSON | unknown label | wrong category | right category, wrong intent | order number missed | order number invented | order number wrong |
+|---|---|---|---|---|---|---|---|---|---|
+| SmolLM2-135M, instructions only | 60 | 60 | 60 | 0 | 0 | 0 | 0 | 0 | 0 |
+| SmolLM2-135M, instructions + 8 examples | 60 | 59 | 1 | 49 | 9 | 0 | 0 | 0 | 0 |
+| SmolLM2-135M fine-tuned (LoRA, original repo) | 60 | 21 | 0 | 1 | 13 | 6 | 1 | 0 | 0 |
+| Qwen3-0.6B, instructions only | 60 | 51 | 0 | 4 | 31 | 9 | 0 | 5 | 2 |
+| TF-IDF + logistic regression + regex | 60 | 17 | 0 | 0 | 12 | 4 | 0 | 1 | 0 |
+
+Examples of errors, SmolLM2-135M fine-tuned (LoRA, original repo), hand-written set:
+
+- *Hi, first time here. How do I sign up so I can save my basket for later?* → expected `{"category": "ACCOUNT", "intent": "create_account", "order_number": null}`, got `{"category": "ORDER", "intent": "place_order", "order_number": null}` (wrong category)
+- *Please erase my profile and everything attached to it, I am not going to shop here again.* → expected `{"category": "ACCOUNT", "intent": "delete_account", "order_number": null}`, got `{"category": "ACCOUNT", "intent": "recover_password", "order_number": null}` (right category, wrong intent)
+- *I moved to a new job and my email changed, where do I update the details on my profile?* → expected `{"category": "ACCOUNT", "intent": "edit_account", "order_number": null}`, got `{"category": "FEEDBACK", "intent": "review", "order_number": null}` (wrong category)
+- *The phone number on my account is the old one. Can I fix that myself?* → expected `{"category": "ACCOUNT", "intent": "edit_account", "order_number": null}`, got `{"category": "ACCOUNT", "intent": "recover_password", "order_number": null}` (right category, wrong intent)
 <!-- ERRORS:END -->
 
 <!-- ERROR-DISCUSSION:START -->

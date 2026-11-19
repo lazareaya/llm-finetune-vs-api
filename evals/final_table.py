@@ -113,8 +113,9 @@ def build_tables(report: dict) -> str:
     for system, label, _ in ROWS:
         r = report.get(f"{system}/challenge")
         if r:
-            out.append(f"| {label} | {r['exact_record_pct']}% | {r['intent_accuracy_pct']}% | "
-                       f"{r['order_number_found_pct']}% | {r['valid_record_pct']}% |")
+            pct = lambda v: "-" if v is None else f"{v}%"  # noqa: E731
+            out.append(f"| {label} | {pct(r['exact_record_pct'])} | {pct(r['intent_accuracy_pct'])} | "
+                       f"{pct(r['order_number_found_pct'])} | {pct(r['valid_record_pct'])} |")
     agreement = report.get("judge/test", {}).get("agreement")
     if agreement:
         jt = report["judge/test"]
